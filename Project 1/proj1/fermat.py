@@ -17,11 +17,11 @@ def mod_exp(x, y, N):
 	
 
 def fprobability(k):
-    return 1 - (1 / (2 ** k))
+    return 1 - (1 / 2) ** k
 
 
 def mprobability(k):
-    return 1 - (3 / (4 ** k))
+    return 1 - (1 / 4) ** k
 
 
 def fermat(N,k):
@@ -48,7 +48,6 @@ def miller_rabin(N,k):
             
             while (rem == 1) and cont:
                 rem = mod_exp(a,exp,N)
-                # print(f'{a} ** {exp} % {N} = {rem}')
 
                 if exp % 2 == 0 and exp != 0:
                     exp = exp / 2
