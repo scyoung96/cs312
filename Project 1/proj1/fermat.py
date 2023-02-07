@@ -60,5 +60,3 @@ def miller_rabin(N,k):
 
     else:
         return 'composite'
-
-
