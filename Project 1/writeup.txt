@@ -52,7 +52,7 @@
     For Miller-Rabin, the equation is:
         P = 1 - (3/(4^k))
 
-    The ratios (1/2 for Fermat, 1/4 for Miller-Rabin) came from both the textbook on pages 35 and 36, and the lab specifications. The reason we use 1/4 for Miller-Rabin is
-    because, to quote the lab specifications, "...for composites (including Carmichael numbers), for at least 3/4 (compared to the ½ we used for basic Fermat) of the possible
+    The ratios (1/2 for Fermat, 1/4 for Miller-Rabin) came from both the textbook on pages 35 and 36, and the lab specification. The reason we use 1/4 for Miller-Rabin is
+    because, to quote the lab specification, "...for composites (including Carmichael numbers), for at least 3/4 (compared to the ½ we used for basic Fermat) of the possible
     choices for a... either the initial test will not equal 1 (mod N)... or, if it does... the first number to show up after the sequence of 1s will be something other than
     N-1 ≣ -1 (mod N).". This means that, for Miller-Rabin, we have a 3/4 chance of getting a non-1 result for composites, and thus a 1/4 chance of getting a -1 result.
