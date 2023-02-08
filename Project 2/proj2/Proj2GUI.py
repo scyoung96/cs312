@@ -110,11 +110,13 @@ class PointLineView( QWidget ):
 			for point in self.pointList[color]:
 				pt = QPointF(w*point.x(), h*point.y())
 				painter.drawEllipse( pt, 1.0, 1.0)
-				painter.scale(1.0,-1.0)
-				textPoint = QPointF(w*point.x() + 2, -h*point.y() + 8)
-				textToDraw = "(" + str(round(point.x(), 3)) + ", " + str(round(point.y(), 3)) + ")"
-				painter.drawText(textPoint, textToDraw)
-				painter.scale(1.0,-1.0)
+
+				# draw the point coordinates
+				# painter.scale(1.0,-1.0)
+				# textPoint = QPointF(w*point.x() + 2, -h*point.y() + 8)
+				# textToDraw = "(" + str(round(point.x(), 3)) + ", " + str(round(point.y(), 3)) + ")"
+				# painter.drawText(textPoint, textToDraw)
+				# painter.scale(1.0,-1.0)
 
 
 # Main GUI class

@@ -60,11 +60,7 @@ class ConvexHullSolver(QObject):
 		self.view.displayStatusText(text)
 
 
-
-
-
-
-
+	# cyclically permute the points in the list until the leftmost point is first
 	def rotatePointsList(self, points, startPoint):
 		'''If the starting point is not the first point in the list, rotate the list until it is'''
 		if points[0] != startPoint:
@@ -74,6 +70,7 @@ class ConvexHullSolver(QObject):
 		return points
 
 
+	# finds the point with the smallest x value
 	def leftMostPoint(self, points):
 		'''Returns the leftmost point in a list of points'''
 		left_point = points[0]
@@ -84,6 +81,7 @@ class ConvexHullSolver(QObject):
 		return left_point
 
 
+	# finds the point with the largest x value
 	def rightMostPoint(self, points):
 		'''Returns the rightmost point in a list of points'''
 		right_point = points[0]
@@ -93,38 +91,8 @@ class ConvexHullSolver(QObject):
 
 		return right_point
 
-
-	def sortPointsCounterclockwise(self, points, startingPoint=None):
-		"""Sorts a list of points counterclockwise from a given starting point. If no starting point is specified, the
-		rightmost point is used."""
-		if startingPoint is None:
-			startingPoint = self.rightMostPoint(points)
-
-		# Draw a line to every other point and sort by the slope of the line
-		points.sort(key=lambda point: math.atan2(point.y() - startingPoint.y(), point.x() - startingPoint.x()))
-
-		# If the starting point is not the first point, rotate the list until it is
-		points = self.rotatePointsList(points, startingPoint)
-
-		return points
-
-
-	def sortPointsClockwise(self, points, startingPoint=None):
-		"""Sorts a list of points clockwise from a given starting point. If no starting point is specified, the
-		leftmost point is used."""
-		if startingPoint is None:
-			startingPoint = self.leftMostPoint(points)
-
-		# Draw a line to every other point and sort by the slope of the line
-		points.sort(key=lambda point: math.atan2(point.y() - startingPoint.y(), point.x() - startingPoint.x()), reverse=True)
-
-		# If the starting point is not the first point, rotate the list until it is
-		points = self.rotatePointsList(points, startingPoint)
-
-		return points
-
-
-	# self written hull solver
+	# divide-and-conquer algorithm for finding the convex hull; recursively descends until there is only one point left, then merges the hulls;
+	# performed in O(nlogn) time, with a branching factor of 2 and a depth of logn, as well as a recombination step of O(n), where n is the number of points
 	def hull_solver(self, points):
 		if len(points) == 1:
 			return points
@@ -141,7 +109,8 @@ class ConvexHullSolver(QObject):
 		return self.merge(left, right, upper_tangent, lower_tangent)
 
 
-	# self written tangent finder
+	# finds upper/lower tangents by comparing slopes of lines between points, starting with the rightmost/leftmost points of the hulls;
+	# performed in O(n) time, where n is the number of points in the hulls being compared
 	def find_tangent(self, left_hull, right_hull, upper):
 		start_left_hull = self.rightMostPoint(left_hull)
 		start_right_hull = self.leftMostPoint(right_hull)
@@ -149,8 +118,11 @@ class ConvexHullSolver(QObject):
 		slope = start_line.dy() / start_line.dx()
 		done = False
 
+		# if we find a point with a steeper slope, we update the start point and continue
 		while not done:
 			done = True
+
+			# if we are finding the upper tangent, we want to find the point with the steepest slope
 			if upper:
 				for point in right_hull:
 					temp = QLineF(start_left_hull, point)
@@ -165,7 +137,8 @@ class ConvexHullSolver(QObject):
 						slope = temp.dy() / temp.dx()
 						start_left_hull = point
 						done = False
-
+			
+			# if we are finding the lower tangent, we want to find the point with the shallowest slope
 			else:
 				for point in right_hull:
 					temp = QLineF(start_left_hull, point)
@@ -184,16 +157,16 @@ class ConvexHullSolver(QObject):
 		return [start_left_hull, start_right_hull]
 
 
-	# self written hull merger
+	# merges the hulls by removing the inner points;
+	# performed in O(n) time, where n is the number of points in the hulls being merged
 	def merge(self, left_hull, right_hull, upper_tangent, lower_tangent, final=False):
 		merged_hull = []
 		upper_tangent_left = upper_tangent[0]
 		upper_tangent_right = upper_tangent[1]
 		lower_tangent_left = lower_tangent[0]
 		lower_tangent_right = lower_tangent[1]
-		slope = lambda p1, p2: math.atan2(p2.y() - p1.y(), p2.x() - p1.x())
 		
-		# remove inner from left hull
+		# remove inner points from left hull
 		left_hull = self.rotatePointsList(left_hull, upper_tangent_left)
 		lower_left_point = None
 		for i in range(len(left_hull)):
@@ -206,7 +179,7 @@ class ConvexHullSolver(QObject):
 		
 		merged_hull.extend(left_hull)
 
-		# remove inner from right hull
+		# remove inner points from right hull
 		right_hull = self.rotatePointsList(right_hull, lower_tangent_right)
 		upper_right_point = None
 		for i in range(len(right_hull)):
@@ -237,13 +210,15 @@ class ConvexHullSolver(QObject):
 
 		t1 = time.time()
 		# TODO: SORT THE POINTS BY INCREASING X-VALUE
+		# sorts the array of points by x value, with lower x values first;
+		# performed in O(nlogn) time (https://stackoverflow.com/questions/14434490/what-is-the-complexity-of-the-sorted-function)
 		points = sorted(points, key=lambda point: point.x())
 		t2 = time.time()
 
 		t3 = time.time()
 		polygon_points = self.hull_solver(points)
-		polygon = [QLineF(polygon_points[i], polygon_points[(i + 1) % len(polygon_points)]) for i in range(len(polygon_points))]
 		# TODO: REPLACE THE LINE ABOVE WITH A CALL TO YOUR DIVIDE-AND-CONQUER CONVEX HULL SOLVER
+		polygon = [QLineF(polygon_points[i], polygon_points[(i + 1) % len(polygon_points)]) for i in range(len(polygon_points))]
 		t4 = time.time()
 
 		# when passing lines to the display, pass a list of QLineF objects.  Each QLineF
