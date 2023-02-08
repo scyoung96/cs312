@@ -110,6 +110,11 @@ class PointLineView( QWidget ):
 			for point in self.pointList[color]:
 				pt = QPointF(w*point.x(), h*point.y())
 				painter.drawEllipse( pt, 1.0, 1.0)
+				painter.scale(1.0,-1.0)
+				textPoint = QPointF(w*point.x() + 2, -h*point.y() + 8)
+				textToDraw = "(" + str(round(point.x(), 3)) + ", " + str(round(point.y(), 3)) + ")"
+				painter.drawText(textPoint, textToDraw)
+				painter.scale(1.0,-1.0)
 
 
 # Main GUI class
@@ -194,6 +199,27 @@ class Proj2GUI( QMainWindow ):
 		self.view.update()
 		app.processEvents()							#Why is this necessary?????
 
+	def loadPoints(self):
+		"""Loads points from a file. The file should be a text file with one point per line."""
+		if self.points:
+			self.view.clearPoints()
+			self.view.clearLines()
+
+		pointsFilePath = os.path.join(os.path.dirname(__file__), 'points.txt')
+		if not os.path.exists(pointsFilePath):
+			print(f"File {pointsFilePath} does not exist.")
+			return
+
+		with open(pointsFilePath, 'r') as f:
+			points = f.read().splitlines()
+		points = [point for point in points]
+		points = [QPointF(float(point.split(" ")[0]), float(point.split(" ")[1])) for point in points]
+		self.view.addPoints(points, (0, 0, 0))
+		self.points = points
+		self.solveButton.setEnabled(True)
+		self.view.update()
+		app.processEvents()  # Why is this necessary?????
+
 # This the method that hooks into your solver.  It passes the
 # problem instance/solution request (a set of points) to the solver, along with
 # the recursion flag to indicate whether to animate the solution
@@ -237,6 +263,7 @@ class Proj2GUI( QMainWindow ):
 		self.distribOval    = QRadioButton('Uniform')
 		self.distribSphere  = QRadioButton('Spherical')
 		self.distribGaussian= QRadioButton('Gaussian')
+		self.loadButton		= QPushButton('Load Points')
 
 		self.randByTime     = QRadioButton('Random')
 		self.randBySeed     = QRadioButton('Seed')
@@ -254,6 +281,7 @@ class Proj2GUI( QMainWindow ):
 		h.addWidget( self.generateButton )
 		h.addWidget( self.solveButton )
 		h.addWidget( self.clearButton )
+		h.addWidget( self.loadButton )
 		h.addStretch(1)
 		vbox.addLayout(h)
 
@@ -284,6 +312,7 @@ class Proj2GUI( QMainWindow ):
 		self.generateButton.clicked.connect(self.generateClicked)
 		self.solveButton.clicked.connect(self.solveClicked)
 		self.clearButton.clicked.connect(self.clearClicked)
+		self.loadButton.clicked.connect(self.loadPoints)
 
 		self.randByTime.clicked.connect(self._randbytime)
 		self.randBySeed.clicked.connect(self._randbyseed)
