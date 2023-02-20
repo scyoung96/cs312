@@ -12,6 +12,7 @@ else:
 
 import time
 import math
+import os
 
 # Some global color constants that might be useful
 RED = (255,0,0)
@@ -20,7 +21,7 @@ BLUE = (0,0,255)
 
 # Global variable that controls the speed of the recursion automation, in seconds
 #
-PAUSE = .25
+PAUSE = 0.25
 
 #
 # This is the class you have to complete.
@@ -59,11 +60,7 @@ class ConvexHullSolver(QObject):
 		self.view.displayStatusText(text)
 
 
-
-
-
-
-
+	# cyclically permute the points in the list until the leftmost point is first
 	def rotatePointsList(self, points, startPoint):
 		'''If the starting point is not the first point in the list, rotate the list until it is'''
 		if points[0] != startPoint:
@@ -73,6 +70,7 @@ class ConvexHullSolver(QObject):
 		return points
 
 
+	# finds the point with the smallest x value
 	def leftMostPoint(self, points):
 		'''Returns the leftmost point in a list of points'''
 		left_point = points[0]
@@ -83,6 +81,7 @@ class ConvexHullSolver(QObject):
 		return left_point
 
 
+	# finds the point with the largest x value
 	def rightMostPoint(self, points):
 		'''Returns the rightmost point in a list of points'''
 		right_point = points[0]
@@ -92,280 +91,106 @@ class ConvexHullSolver(QObject):
 
 		return right_point
 
+	# divide-and-conquer algorithm for finding the convex hull; recursively descends until there is only one point left, then merges the hulls;
+	# performed in O(nlogn) time, with a branching factor of 2 and a depth of logn, as well as a recombination step of O(n), where n is the number of points
+	def hull_solver(self, points):
+		if len(points) == 1:
+			return points
 
-	def sortPointsCounterclockwise(self, points, startingPoint=None):
-		"""Sorts a list of points counterclockwise from a given starting point. If no starting point is specified, the
-		rightmost point is used."""
-		if startingPoint is None:
-			startingPoint = self.rightMostPoint(points)
+		left = self.hull_solver(points[:len(points) // 2])
+		right = self.hull_solver(points[len(points) // 2:])
 
-		# Draw a line to every other point and sort by the slope of the line
-		points.sort(key=lambda point: math.atan2(point.y() - startingPoint.y(), point.x() - startingPoint.x()))
+		# upper tangent
+		upper_tangent = self.find_tangent(left, right, True)
 
-		# If the starting point is not the first point, rotate the list until it is
-		points = self.rotatePointsList(points, startingPoint)
+		# lower tangent
+		lower_tangent = self.find_tangent(left, right, False)
 
-		return points
-
-
-	def sortPointsClockwise(self, points, startingPoint=None):
-		"""Sorts a list of points clockwise from a given starting point. If no starting point is specified, the
-		leftmost point is used."""
-		if startingPoint is None:
-			startingPoint = self.leftMostPoint(points)
-
-		# Draw a line to every other point and sort by the slope of the line
-		points.sort(key=lambda point: math.atan2(point.y() - startingPoint.y(), point.x() - startingPoint.x()), reverse=True)
-
-		# If the starting point is not the first point, rotate the list until it is
-		points = self.rotatePointsList(points, startingPoint)
-
-		return points
+		return self.merge(left, right, upper_tangent, lower_tangent)
 
 
-	# self written hull solver
-	def hull_solver(self, left, right):
-		# when 3 or less points remain on each side
-		if len(left) < 4 and len(right) < 4:
-			left_hull = []
-			right_hull = []
+	# finds upper/lower tangents by comparing slopes of lines between points, starting with the rightmost/leftmost points of the hulls;
+	# performed in O(n) time, where n is the number of points in the hulls being compared
+	def find_tangent(self, left_hull, right_hull, upper):
+		start_left_hull = self.rightMostPoint(left_hull)
+		start_right_hull = self.leftMostPoint(right_hull)
+		start_line = QLineF(start_left_hull, start_right_hull)
+		slope = start_line.dy() / start_line.dx()
+		done = False
 
-			if len(left) == 3:
-				for i in range(len(left)):
-					left_hull.append(QLineF(left[i], left[(i+1)%len(left)]))
-			elif len(left) == 2:
-				left_hull.append(QLineF(left[0], left[1]))
-			else:
-				pause = 1
+		# if we find a point with a steeper slope, we update the start point and continue
+		while not done:
+			done = True
 
-			if len(right) == 3:	
-				for i in range(len(right)):
-					right_hull.append(QLineF(right[i], right[(i+1)%len(right)]))
-			elif len(right) == 2:
-				right_hull.append(QLineF(right[0], right[1]))
-			else:
-				pause = 1
-
-			left_sorted = self.sortPointsCounterclockwise(left)
-			right_sorted = self.sortPointsClockwise(right)
-
-			# upper tangent
-			left_upper_tangent = self.find_tangent(left_sorted, right_sorted, True, True)
-			right_upper_tangent = self.find_tangent(left_sorted, [left_upper_tangent.p2()], True, False)
-			upper_tangent = self.find_tangent([right_upper_tangent.p1()], right_sorted, True, True)
-			self.blinkTangent([upper_tangent], RED)
-
-			left_sorted = self.sortPointsClockwise(left)
-			right_sorted = self.sortPointsCounterclockwise(right)
-
-			# lower tangent
-			left_lower_tangent = self.find_tangent(left_sorted, right_sorted, False, True)
-			right_lower_tangent = self.find_tangent(left_sorted, [left_lower_tangent.p2()], False, False)
-			lower_tangent = self.find_tangent([right_lower_tangent.p1()], right_sorted, False, True)
-			self.blinkTangent([lower_tangent], GREEN)
-
-			if (upper_tangent.p1() == lower_tangent.p1()):
-				left_hull = [i for i in left_hull if i.p1() != upper_tangent.p1()]
-			elif (upper_tangent.p2() == lower_tangent.p2()):
-				right_hull = [i for i in right_hull if i.p2() != upper_tangent.p2()]
-
-			return self.merge(left_hull, right_hull, upper_tangent, lower_tangent)
-
-		# continue to recurse
-		else:
-			left_hull = self.hull_solver(left[:len(left) // 2], left[len(left) // 2:])
-			self.showHull(left_hull, RED)
-			right_hull = self.hull_solver(right[:len(right) // 2], right[len(right) // 2:])
-			self.showHull(right_hull, GREEN)
-
-			left_hull_points = []
-			for i in range(len(left_hull)):
-				if left_hull[i].p1() not in left_hull_points:
-					left_hull_points.append(left_hull[i].p1())
-			for i in range(len(left_hull)):
-				if left_hull[i].p2() not in left_hull_points:
-					left_hull_points.append(left_hull[i].p2())
-
-			right_hull_points = []
-			for i in range(len(right_hull)):
-				if right_hull[i].p1() not in right_hull_points:
-					right_hull_points.append(right_hull[i].p1())
-			for i in range(len(right_hull)):
-				if right_hull[i].p2() not in right_hull_points:
-					right_hull_points.append(right_hull[i].p2())
-
-			left_sorted = self.sortPointsCounterclockwise(left_hull_points)
-			right_sorted = self.sortPointsClockwise(right_hull_points)
-
-			# upper tangent
-			left_upper_tangent = self.find_tangent(left_sorted, right_sorted, True, True)
-			right_upper_tangent = self.find_tangent(left_sorted, [left_upper_tangent.p2()], True, False)
-			upper_tangent = self.find_tangent([right_upper_tangent.p1()], right_sorted, True, True)
-			self.blinkTangent([upper_tangent], RED)
-
-			# lower tangent
-			left_lower_tangent = self.find_tangent(left_sorted, right_sorted, False, True)
-			right_lower_tangent = self.find_tangent(left_sorted, [left_lower_tangent.p2()], False, False)
-			lower_tangent = self.find_tangent([right_lower_tangent.p1()], right_sorted, False, True)
-			self.blinkTangent([lower_tangent], GREEN)
-
-			return self.merge(left_hull, right_hull, upper_tangent, lower_tangent)
-
-	# self written tangent finder
-	def find_tangent(self, left_hull, right_hull, upper, left):
-		if upper:
-			if left:
-				left_tangent = QLineF(left_hull[0], right_hull[0])
-				for i in range(len(right_hull)):
-					if left_tangent.dy() / left_tangent.dx() < QLineF(left_hull[0], right_hull[i]).dy() / QLineF(left_hull[0], right_hull[i]).dx():
-						left_tangent = QLineF(left_hull[0], right_hull[i])
-				return left_tangent
-			else:
-				right_tangent = QLineF(left_hull[0], right_hull[0])
-				for i in range(len(left_hull)):
-					if right_tangent.dy() / right_tangent.dx() > QLineF(left_hull[i], right_hull[0]).dy() / QLineF(left_hull[i], right_hull[0]).dx():
-						right_tangent = QLineF(left_hull[i], right_hull[0])
-				return right_tangent
-		else:
-			if left:
-				left_tangent = QLineF(left_hull[0], right_hull[0])
-				for i in range(len(right_hull)):
-					if left_tangent.dy() / left_tangent.dx() > QLineF(left_hull[0], right_hull[i]).dy() / QLineF(left_hull[0], right_hull[i]).dx():
-						left_tangent = QLineF(left_hull[0], right_hull[i])
-				return left_tangent
-			else:
-				right_tangent = QLineF(left_hull[0], right_hull[0])
-				for i in range(len(left_hull)):
-					if right_tangent.dy() / right_tangent.dx() < QLineF(left_hull[i], right_hull[0]).dy() / QLineF(left_hull[i], right_hull[0]).dx():
-						right_tangent = QLineF(left_hull[i], right_hull[0])
-				return right_tangent
-
-
-	# self written hull merger
-	def merge(self, left_hull, right_hull, upper_tangent, lower_tangent):
-		merged_hull = []
-		upper_tangent_left = upper_tangent.p1()
-		upper_tangent_right = upper_tangent.p2()
-		lower_tangent_left = lower_tangent.p1()
-		lower_tangent_right = lower_tangent.p2()
-		slope = lambda p1, p2: math.atan2(p2.y() - p1.y(), p2.x() - p1.x())
-		
-		left_remove = []
-		remove_tangent_link = False
-		remove_others = False
-		if len(left_hull) > 2:
-			for i in range(len(left_hull)):
-				p1 = left_hull[i].p1()
-				p2 = left_hull[i].p2()
-
-				if i == 0:
-					# lower, non, upper
-					if ((p1 == lower_tangent_left) and (p2 != upper_tangent_left)):
-						if slope(upper_tangent_left, p1) > slope(p2, p1):
-							left_remove.append(i)
-							remove_others = True
-						else:
-							remove_tangent_link = True
-
-					# lower, upper, non
-					elif ((p1 == lower_tangent_left) and (p2 == upper_tangent_left)):
-						remove_others = True
-
-					# upper, lower, non
-					elif ((p1 == upper_tangent_left) and (p2 == lower_tangent_left)):
-						remove_others = True
-
-					# upper, non, lower
-					elif ((p1 == upper_tangent_left) and (p2 != lower_tangent_left)):
-						if slope(lower_tangent_left, p1) < slope(p2, p1):
-							left_remove.append(i)
-							remove_others = True
-						else:
-							remove_tangent_link = True
-
-					# non, lower, upper
-					elif ((p1 != lower_tangent_left) and (p2 == lower_tangent_left)):
-						remove_tangent_link = True
-
-					# non, upper, lower
-					elif ((p1 != upper_tangent_left) and (p2 == upper_tangent_left)):
-						remove_tangent_link = True
-
-
-				elif remove_tangent_link:
-					if ((p1 == lower_tangent_left) and (p2 == upper_tangent_left)) or ((p1 == upper_tangent_left) and (p2 == lower_tangent_left)):
-						left_remove.append(i)
+			# if we are finding the upper tangent, we want to find the point with the steepest slope
+			if upper:
+				for point in right_hull:
+					temp = QLineF(start_left_hull, point)
+					if temp.dy() / temp.dx() > slope:
+						slope = temp.dy() / temp.dx()
+						start_right_hull = point
+						done = False
 				
-				elif remove_others:
-					if ((p1 == lower_tangent_left) and (p2 != upper_tangent_left)) or ((p1 == upper_tangent_left) and (p2 != lower_tangent_left)):
-						pass
-					else:
-						left_remove.append(i)
+				for point in left_hull:
+					temp = QLineF(start_right_hull, point)
+					if temp.dy() / temp.dx() < slope:
+						slope = temp.dy() / temp.dx()
+						start_left_hull = point
+						done = False
+			
+			# if we are finding the lower tangent, we want to find the point with the shallowest slope
+			else:
+				for point in right_hull:
+					temp = QLineF(start_left_hull, point)
+					if temp.dy() / temp.dx() < slope:
+						slope = temp.dy() / temp.dx()
+						start_right_hull = point
+						done = False
+				
+				for point in left_hull:
+					temp = QLineF(start_right_hull, point)
+					if temp.dy() / temp.dx() > slope:
+						slope = temp.dy() / temp.dx()
+						start_left_hull = point
+						done = False
+		
+		return [start_left_hull, start_right_hull]
 
-			left_hull = [i for j, i in enumerate(left_hull) if j not in left_remove]
+
+	# merges the hulls by removing the inner points;
+	# performed in O(n) time, where n is the number of points in the hulls being merged
+	def merge(self, left_hull, right_hull, upper_tangent, lower_tangent, final=False):
+		merged_hull = []
+		upper_tangent_left = upper_tangent[0]
+		upper_tangent_right = upper_tangent[1]
+		lower_tangent_left = lower_tangent[0]
+		lower_tangent_right = lower_tangent[1]
+		
+		# remove inner points from left hull
+		left_hull = self.rotatePointsList(left_hull, upper_tangent_left)
+		lower_left_point = None
+		for i in range(len(left_hull)):
+			if left_hull[i] != lower_tangent_left:
+				pass
+			else:
+				lower_left_point = i
+				break
+		left_hull = left_hull[:lower_left_point + 1]
 		
 		merged_hull.extend(left_hull)
 
-		right_remove = []
-		remove_tangent_link = False
-		remove_others = False
-		if len(right_hull) > 2:
-			for i in range(len(right_hull)):
-				p1 = right_hull[i].p1()
-				p2 = right_hull[i].p2()
-
-				if i == 0:
-					# lower, non, upper
-					if ((p1 == lower_tangent_right) and (p2 != upper_tangent_right)):
-						if slope(upper_tangent_right, p1) > slope(p2, p1):
-							remove_tangent_link = True
-						else:
-							right_remove.append(i)
-							remove_others = True
-
-					# lower, upper, non
-					elif ((p1 == lower_tangent_right) and (p2 == upper_tangent_right)):
-						right_remove.append(i)
-
-					# upper, lower, non
-					elif ((p1 == upper_tangent_right) and (p2 == lower_tangent_right)):
-						right_remove.append(i)
-
-					# upper, non, lower
-					elif ((p1 == upper_tangent_right) and (p2 != lower_tangent_right)):
-						if slope(lower_tangent_right, p1) < slope(p2, p1):
-							remove_tangent_link = True
-						else:
-							right_remove.append(i)
-							remove_others = True
-
-					# non, lower, upper
-					elif ((p1 != lower_tangent_right) and (p2 == lower_tangent_right)):
-						right_remove.append(i)
-						remove_others = True
-
-					# non, upper, lower
-					elif ((p1 != upper_tangent_right) and (p2 == upper_tangent_right)):
-						right_remove.append(i)
-						remove_others = True
-
-
-				elif remove_tangent_link:
-					if ((p1 == lower_tangent_right) and (p2 == upper_tangent_right)) or ((p1 == upper_tangent_right) and (p2 == lower_tangent_right)):
-						right_remove.append(i)
-				
-				elif remove_others:
-					if ((p1 == lower_tangent_right) and (p2 == upper_tangent_right)) or ((p1 == upper_tangent_right) and (p2 == lower_tangent_right)):
-						pass
-					else:
-						right_remove.append(i)
-
-			right_hull = [i for j, i in enumerate(right_hull) if j not in right_remove]
+		# remove inner points from right hull
+		right_hull = self.rotatePointsList(right_hull, lower_tangent_right)
+		upper_right_point = None
+		for i in range(len(right_hull)):
+			if right_hull[i] != upper_tangent_right:
+				pass
+			else:
+				upper_right_point = i
+				break
+		right_hull = right_hull[:upper_right_point + 1]
 
 		merged_hull.extend(right_hull)
-
-		merged_hull.append(upper_tangent)
-		merged_hull.append(lower_tangent)
 
 		return merged_hull
 
@@ -377,18 +202,23 @@ class ConvexHullSolver(QObject):
 		self.view = view
 		assert( type(points) == list and type(points[0]) == QPointF )
 
+		# Write points out to a txt file
+		# pointsFilePath = os.path.join(os.path.dirname(__file__), 'points.txt')
+		# with open(pointsFilePath, 'w') as f:
+		# 	for point in points:
+		# 		f.write(f"{point.x()} {point.y()}\n")
+
 		t1 = time.time()
 		# TODO: SORT THE POINTS BY INCREASING X-VALUE
+		# sorts the array of points by x value, with lower x values first;
+		# performed in O(nlogn) time (https://stackoverflow.com/questions/14434490/what-is-the-complexity-of-the-sorted-function)
 		points = sorted(points, key=lambda point: point.x())
 		t2 = time.time()
 
 		t3 = time.time()
-		# this is a dummy polygon of the first 3 unsorted points
-		# polygon = [QLineF(points[i],points[(i+1)%3]) for i in range(3)]
-		initial_left = points[:len(points) // 2]
-		initial_right = points[len(points) // 2:]
-		polygon = self.hull_solver(initial_left, initial_right)
+		polygon_points = self.hull_solver(points)
 		# TODO: REPLACE THE LINE ABOVE WITH A CALL TO YOUR DIVIDE-AND-CONQUER CONVEX HULL SOLVER
+		polygon = [QLineF(polygon_points[i], polygon_points[(i + 1) % len(polygon_points)]) for i in range(len(polygon_points))]
 		t4 = time.time()
 
 		# when passing lines to the display, pass a list of QLineF objects.  Each QLineF

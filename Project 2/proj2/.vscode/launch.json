@@ -9,8 +9,8 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            // "program": "${file}",
-            "program": "Proj2GUI.py",
+            "program": "${file}",
+            // "program": "Proj2GUI.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
