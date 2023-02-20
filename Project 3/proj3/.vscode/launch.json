@@ -4,13 +4,11 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    
         {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            // "program": "${file}",
-            "program": "Proj2GUI.py",
+            "program": "Proj3GUI.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
