@@ -1,0 +1,25 @@
+1.	Functioning code can be found in the convex_hull.py file
+
+2.	Brief pseudocode/explanation showing critical complexity portions:
+		points = [list of all points to find hull for]
+		Recursively split points in half until we have one point on the left and one on the right
+		Work our way back up, combining left and right sides by finding an upper and lower tangent to combine them, and removing any points contained within the resulting tangents + outer points
+
+	All work is done on the points array: as we recurse, we look at increasingly smaller portions of this array, meaning we will need this array of size |points|, and then a separate array that will contain the points that form the convex hull. This array will never contain more than |points| points, so at worst we'll need memory for 2 * |points| worth of space. Additionally, before any recursion or combining is done, an in-place sort of this array is performed to provide an array with points at lower indices that have small x values, and higher indices that have higher x values.
+
+	Here, T(n) = 2T(n/2) + n, which gives us a resulting time complexity of O(n*log(n)). At each step we divide our problem into two subproblems of size n/2, then recombine in linear time. This means that a = 2, b = 2, and d = 1, and since (a/(b)^d) = (2/(2)^1) = 1, we get our T(n) = O(n^d * log(n)) = O(n*log(n)).
+
+3.	Below is my observed experimental data: col 0 is number of points, cols 1-5 are the times
+	from running the experiment 5 times, and col 6 is the avg of these 5 times. A plot of this data can be found in the file graph.png. Using a logarithmic scale for our x-axis allows for better data visualization, as it allows it to fit much more nicely onto a square graph, and shows the shape of the curve more accurately than if it were to be zoomed out on a traditional linear axis.
+		n		times (s)								avg (s)
+		10		0.000	0.000	0.000	0.000	0.000	0.000		
+		100		0.002 	0.002 	0.002	0.002	0.002	0.002		
+		1000 	0.018	0.018	0.018	0.018	0.018	0.018		
+		10000	0.185	0.191	0.187	0.185	0.184	0.186		
+		100000	1.853	1.845	1.850	1.813	1.817	1.836		
+		500000	9.041	9.127	9.004	9.023	9.013	9.042		
+		1000000	18.41	18.06	18.50	18.48	18.33	18.36		
+
+4.	Given this small set of data, it would appear that a linear model would actually fit best here; each time we increase n by a factor of 10, our average time also increases by a factor of 10. This would suggest a better fit on a O(n) model than O(n*log(n)), however this is clearly a small set of data, so drawing such conclusions would not be appropriate. However, if it were O(n) and linear is it would appear to be, this data seems to roughly fit the line y = .000018x
+
+5.	Screenshots of examples with 100 and 1000 points can be found in the files 100pts.png and 1000pts.png

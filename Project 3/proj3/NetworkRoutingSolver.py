@@ -75,11 +75,11 @@ class NetworkRoutingSolver:
         else:
             nodesPQ = PriorityQueueHeap()
         nodesPQ.insert(self.network.nodes[self.source], 0)
-        currItem = None
+        currNode = None
 
         while not nodesPQ.isEmpty():
-            currItem = nodesPQ.deleteMin()
-            for edge in currItem.node.neighbors:
+            currNode = nodesPQ.deleteMin()
+            for edge in currNode.neighbors:
                 if self.dist[edge.dest.node_id] > self.dist[edge.src.node_id] + edge.length:
                     self.dist[edge.dest.node_id] = self.dist[edge.src.node_id] + edge.length
                     self.prev[edge.dest.node_id] = edge.src.node_id

@@ -2,24 +2,31 @@
 class PriorityQueueArray:
     def __init__(self):
         self.array = []
-        self.visited = []
+        self.dist = {}
+        self.visited = set()
         self.currKey = 0
 
 # basic functionality
     def insert(self, node, key):
-        self.array.append(Item(node, key))
+        if node not in self.visited:
+            self.array.append(node)
+            self.dist[node] = key
+            self.visited.add(node)
 
     def remove(self):
         # returns the Item with the maximum key that was removed
         if len(self.array) == 0:
             return None
         else:
-            max = self.array[0]
+            maxNode = self.array[0]
+            maxDist = self.dist[self.array[0]]
             for i in range(1, len(self.array)):
-                if self.array[i].key > max.key:
-                    max = self.array[i]
-            self.array.remove(max)
-            return max
+                if self.dist[self.array[i]] > maxDist:
+                    maxNode = self.array[i]
+                    maxDist = self.dist[self.array[i]]
+            self.array.remove(maxNode)
+            del self.dist[maxNode]
+            return maxNode
 
     def isEmpty(self):
         return len(self.array) == 0
@@ -33,22 +40,26 @@ class PriorityQueueArray:
         if len(self.array) == 0:
             return None
         else:
-            min = self.array[0]
+            minNode = self.array[0]
+            minDist = self.dist[self.array[0]]
             for i in range(1, len(self.array)):
-                if self.array[i].key < min.key:
-                    min = self.array[i]
-            self.array.remove(min)
-            self.visited.append(min.node)
-            return min
+                if self.dist[self.array[i]] < minDist:
+                    minNode = self.array[i]
+                    minDist = self.dist[self.array[i]]
+            self.array.remove(minNode)
+            del self.dist[minNode]
+            return minNode
 
     def decreaseKey(self, node, newKey):
         # returns True if key was decreased, False if key was not found and new key was added
-        for i in range(len(self.array)):
-            if self.array[i].node == node:
-                self.array[i] = Item(node, newKey)
-                return True
-        self.array.append(Item(node, newKey))
-        return False
+        if node in self.visited:
+            self.dist[node] = newKey
+            return True
+        else:
+            self.array.append(node)
+            self.visited.add(node)
+            self.dist[node] = newKey
+            return False
 
 
 # heap
@@ -56,13 +67,16 @@ class PriorityQueueHeap:
     def __init__(self):
         self.heap = []
         self.refDict = {}
+        self.visited = set()
         self.currKey = 0
 
 # basic functionality
     def insert(self, node, key):
-        self.heap.append(Item(node, key))
-        self.refDict[node] = len(self.heap) - 1
-        self.siftUp(len(self.heap) - 1)
+        if node not in self.visited:
+            self.heap.append(Item(node, key))
+            self.visited.add(node)
+            self.refDict[node] = len(self.heap) - 1
+            self.siftUp(len(self.heap) - 1)
 
     def siftUp(self, index):
         if index == 0:
@@ -115,7 +129,7 @@ class PriorityQueueHeap:
             self.heap[0], self.heap[len(self.heap) - 1] = self.heap[len(self.heap) - 1], self.heap[0]
             min = self.heap.pop()
             self.siftDown(0)
-            return min
+            return min.node
 
     def decreaseKey(self, node, newKey):
         # returns True if key was decreased, False if key was not found and new key was added
@@ -125,11 +139,13 @@ class PriorityQueueHeap:
             self.siftUp(index)
             return True
         except:
-            index = len(self.heap)
-            self.heap.append(Item(node, newKey))
-            self.refDict[node] = index
-            self.siftUp(index)
-            return False
+            if node not in self.visited:
+                index = len(self.heap)
+                self.heap.append(Item(node, newKey))
+                self.visited.add(node)
+                self.refDict[node] = index
+                self.siftUp(index)
+                return False
 
 
 class Item:
