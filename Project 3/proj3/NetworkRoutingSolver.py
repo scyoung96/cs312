@@ -28,6 +28,10 @@ class NetworkRoutingSolver:
         path = []
         curr = self.dest
         while curr != self.source:
+
+            if curr is None:
+                return {'cost':float('inf'), 'path':[]}
+
             path.append(curr)
             curr = self.prev[curr]
         path.append(self.source)
