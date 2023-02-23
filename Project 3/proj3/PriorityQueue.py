@@ -99,7 +99,7 @@ class PriorityQueueHeap:
                 self.refDict[self.heap[left].node] = left
                 self.refDict[self.heap[index].node] = index
             return
-        if self.heap[left].key > self.heap[right].key:
+        if self.heap[left].key < self.heap[right].key:
             if self.heap[index].key > self.heap[left].key:
                 self.heap[index], self.heap[left] = self.heap[left], self.heap[index]
                 self.refDict[self.heap[left].node] = left
@@ -135,7 +135,7 @@ class PriorityQueueHeap:
         # returns True if key was decreased, False if key was not found and new key was added
         try:
             index = self.refDict[node]
-            self.heap[index] = Item(node, newKey)
+            self.heap[index].key = newKey
             self.siftUp(index)
             return True
         except:
