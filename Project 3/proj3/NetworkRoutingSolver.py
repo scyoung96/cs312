@@ -20,10 +20,6 @@ class NetworkRoutingSolver:
 
     def getShortestPath( self, destIndex ):
         self.dest = destIndex
-        # TODO: RETURN THE SHORTEST PATH FOR destIndex
-        #       INSTEAD OF THE DUMMY SET OF EDGES BELOW
-        #       IT'S JUST AN EXAMPLE OF THE FORMAT YOU'LL 
-        #       NEED TO USE
 
         path = []
         curr = self.dest
@@ -47,24 +43,40 @@ class NetworkRoutingSolver:
         return {'cost':self.dist[self.dest], 'path':path_edges}
 
 
-
-
     def computeShortestPaths( self, srcIndex, use_heap=False ):
         self.source = srcIndex
         t1 = time.time()
-        # TODO: RUN DIJKSTRA'S TO DETERMINE SHORTEST PATHS.
-        #       ALSO, STORE THE RESULTS FOR THE SUBSEQUENT
-        #       CALL TO getShortestPath(dest_index)
         self.dijkstra(use_heap)
         t2 = time.time()
         return (t2-t1)
 
+
+    # dijkstra
+# NOTE: time complexity: varies between array and heap implementations, space complexity: O(|V|)
+    # time: Dijkstra itself has a time complexity of O(|V|) before anything is done since we must
+    # first iterate over each node to set the dist and prev arrays. After that, the complexity
+    # diverges depending on if we are using an array or heap implementation of a priority queue.
+    # The array implementation has O(|V|) time complexity on its dominating function, deleteMin(),
+    # since it has to iterate through the entire array to find the minimum node. We multiply this
+    # with the base O(|V|) time complexity of dijkstra() to get O(|V|^2).
+    # The heap implementation has O(log|V|) time complexity on each of its functions, since at each
+    # step it cuts out half the tree as it sifts up/down. We multiply this with the base O(|V|)
+    # time complexity of dijkstra() to get O(|V|log|V|).
+    # space: O(|V|) since we are creating two dictionaries of size V, one for the distance
+    # to each node, and one for the previous node of each node
     def dijkstra(self, use_heap=False):
         self.dist = {}
         self.prev = {}
         self.dist[self.source] = 0
         self.prev[self.source] = None
 
+    # NOTE: time complexity: O(|V|), space complexity: O(|V|)
+        # time: this is because we have to iterate through the entire graph to initialize the
+        # distance and previous dictionaries, which is a linear time operation since |V|
+        # is the number of nodes in the graph
+        # space: this is because we are creating two dictionaries, one for the distance to
+        # each node, and one for the previous node of each node, which is a linear space
+        # operation since |V| is the number of nodes in the graph
         for node in self.network.nodes:
             if node.node_id != self.source:
                 self.dist[node.node_id] = float('inf')
@@ -77,6 +89,9 @@ class NetworkRoutingSolver:
         nodesPQ.insert(self.network.nodes[self.source], 0)
         currNode = None
 
+    # NOTE: time complexity: varies between array and heap implementations, space complexity: O(|V|)
+        # time: O(|V|^2) for the array implementaton and O(|V|log|V|) for the heap implementation
+        # space: O(|V|) for both implementations
         while not nodesPQ.isEmpty():
             currNode = nodesPQ.deleteMin()
             for edge in currNode.neighbors:
