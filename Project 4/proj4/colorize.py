@@ -1,6 +1,7 @@
 colors = {  'blue': '027',      # blues
             'cyan': '045',
-            'green': '048',     # greens
+            'forest': '034',    # greens
+            'green': '048',
             'lime': '154',
             'yellow': '011',    # yellows
             'gold': '220',
