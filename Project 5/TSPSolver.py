@@ -9,13 +9,15 @@ else:
 	raise Exception('Unsupported Version of PyQt: {}'.format(PYQT_VER))
 
 from colorize import *
-import StateGraph
+from StateGraph import *
 
 import time
 import numpy as np
 from TSPClasses import *
-import heapq
-import itertools
+from queue import PriorityQueue
+
+
+DEBUG = False
 
 
 class TSPSolver:
@@ -84,34 +86,43 @@ class TSPSolver:
 		results = {}
 		cities = self._scenario.getCities()
 		route = []
+# REVIEW: assuming start city is first city in list
+		start_city = 0
 		
 		start_time = time.time()
 		
-		# Start at the first city
-# FIXME: assuming start city is first city in list
-		route.append(cities[0])
-		currCityIndex = 0
+		while route == []:
+			try:
+				# Start at the first city
+		
+				route.append(cities[start_city])
+				currCityIndex = 0
 
-		# Create a list of the remaining cities
-		remaining_cities = cities.copy()
-# FIXME: if previous fixme is changed (ie start city is not first in list), update this ref as well
-		remaining_cities.remove(cities[0])
+				# Create a list of the remaining cities
+				remaining_cities = cities.copy()
+				remaining_cities.remove(cities[start_city])
 
-		# Loop through the remaining cities
-		while len(remaining_cities) > 0:
-			# Find the closest city
-			closest_city = None
-			closest_distance = math.inf
-			for city in remaining_cities:
-				distance = route[currCityIndex].costTo(city)
-				if distance < closest_distance:
-					closest_city = city
-					closest_distance = distance
+				# Loop through the remaining cities
+				while len(remaining_cities) > 0:
+					# Find the closest city
+					closest_city = None
+					closest_distance = math.inf
+					for city in remaining_cities:
+						distance = route[currCityIndex].costTo(city)
+						if distance < closest_distance:
+							closest_city = city
+							closest_distance = distance
 
-			# Add the closest city to the route
-			route.append(closest_city)
-			remaining_cities.remove(closest_city)
-			currCityIndex += 1
+					# Add the closest city to the route
+					route.append(closest_city)
+					remaining_cities.remove(closest_city)
+					currCityIndex += 1
+			except:
+				start_city += 1
+				if start_city >= len(cities):
+					raise Exception("No valid route found")
+				route = []
+				continue
 
 		bssf = TSPSolution(route)
 
@@ -124,7 +135,6 @@ class TSPSolver:
 		results['total'] = None
 		results['pruned'] = None
 		return results
-
 
 
 	''' <summary>
@@ -142,15 +152,14 @@ class TSPSolver:
 
 		results = {}
 
-		bssf = self.greedy(self, time_allowance)['soln']
-		cost = bssf['cost']
+		bssf = self.greedy(time_allowance)['soln']
+		cost = bssf.cost
 		count = 0
 		max_queue_size = 0
-		total_states = 0
+		total_states = 1
 		pruned_states = 0
 
 		# Create a priority queue
-		from queue import PriorityQueue
 		pq = PriorityQueue()
 
 		# Create the initial StateGraph
@@ -163,9 +172,11 @@ class TSPSolver:
 
 		while not pq.empty() and time.time() - start_time <= time_allowance:
 			# Get the next state
-			next_state_graph = pq.get()
-			state_graph_lower_bound = next_state_graph[0]
-			state_graph = next_state_graph[1]
+			state_graph = pq.get()[1]
+
+			if state_graph.lower_bound >= cost:
+				pruned_states += 1
+				continue
 
 			# Check if the state is a solution
 			if state_graph.is_solution():
@@ -173,27 +184,40 @@ class TSPSolver:
 				if state_graph.bssf.cost < cost:
 					# Update the best solution
 					bssf = state_graph.bssf
-					cost = bssf.cost()
+					cost = bssf.cost
 					count += 1
 			else:
 				# Expand the state
-				children = state_graph.get_partial_paths()
+				children, pruned_states_count = state_graph.get_partial_paths()
 
 				# Add the children to the priority queue
 				for child in children:
+					if DEBUG:
+						child.print_adj_matrix()
 					pq.put((child.lower_bound, child))
+					total_states += 1
 
 			# Update the stats
 			if pq.qsize() > max_queue_size:
 				max_queue_size = pq.qsize()
-			total_states += 1
-			pruned_states += state_graph.pruned_states_count
+			pruned_states += pruned_states_count
+			# total_states += 1
+		end_time = time.time()
 
+		# add any remaining states with lowerbound >= cost to pruned states
+		while pq.qsize() > 0:
+			state_graph = pq.get()[1]
+			if state_graph.lower_bound >= cost:
+				pruned_states += 1
 
-
-		
-
-
+		results['cost'] = bssf.cost
+		results['time'] = end_time - start_time
+		results['count'] = count
+		results['soln'] = bssf
+		results['max'] = max_queue_size
+		results['total'] = total_states
+		results['pruned'] = pruned_states
+		return results
 
 
 	''' <summary>
