@@ -113,6 +113,7 @@ class StateGraph:
                 partial_StateGraphs.append(partial_StateGraph)
             else:
                 pruned_states_count += 1
+                continue
 
             if partial_StateGraph.is_solution():
                 route = [self.cities[i] for i in partial_StateGraph.path]
@@ -122,12 +123,6 @@ class StateGraph:
     
     def is_solution(self):
         '''Returns true if the current StateGraph is a solution.'''
-        # for i in range(self.num_cities):
-        #     for j in range(self.num_cities):
-        #         if self.adj_matrix[i][j] != np.inf:
-        #             return False
-        # return True
-
         return len(self.path) == self.num_cities
 
 
