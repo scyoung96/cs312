@@ -9,6 +9,7 @@ else:
 	raise Exception('Unsupported Version of PyQt: {}'.format(PYQT_VER))
 
 from colorize import *
+import StateGraph
 
 import time
 import numpy as np
@@ -87,13 +88,13 @@ class TSPSolver:
 		start_time = time.time()
 		
 		# Start at the first city
-# FIXME - assuming start city is first city in list
+# FIXME: assuming start city is first city in list
 		route.append(cities[0])
 		currCityIndex = 0
 
 		# Create a list of the remaining cities
 		remaining_cities = cities.copy()
-# FIXME - if previous fixme is changed (ie start city is not first in list), update this ref as well
+# FIXME: if previous fixme is changed (ie start city is not first in list), update this ref as well
 		remaining_cities.remove(cities[0])
 
 		# Loop through the remaining cities
@@ -136,7 +137,62 @@ class TSPSolver:
 	'''
 
 	def branchAndBound(self,time_allowance=60.0):
-		pass
+		cities = self._scenario.getCities()
+		ncities = len(cities)
+
+		results = {}
+
+		bssf = self.greedy(self, time_allowance)['soln']
+		cost = bssf['cost']
+		count = 0
+		max_queue_size = 0
+		total_states = 0
+		pruned_states = 0
+
+		# Create a priority queue
+		from queue import PriorityQueue
+		pq = PriorityQueue()
+
+		# Create the initial StateGraph
+		state_graph = StateGraph(cities, bssf)
+
+		# Add the initial state to the priority queue
+		pq.put((state_graph.lower_bound, state_graph))
+
+		start_time = time.time()
+
+		while not pq.empty() and time.time() - start_time <= time_allowance:
+			# Get the next state
+			next_state_graph = pq.get()
+			state_graph_lower_bound = next_state_graph[0]
+			state_graph = next_state_graph[1]
+
+			# Check if the state is a solution
+			if state_graph.is_solution():
+				# Check if the state is better than the current best solution
+				if state_graph.bssf.cost < cost:
+					# Update the best solution
+					bssf = state_graph.bssf
+					cost = bssf.cost()
+					count += 1
+			else:
+				# Expand the state
+				children = state_graph.get_partial_paths()
+
+				# Add the children to the priority queue
+				for child in children:
+					pq.put((child.lower_bound, child))
+
+			# Update the stats
+			if pq.qsize() > max_queue_size:
+				max_queue_size = pq.qsize()
+			total_states += 1
+			pruned_states += state_graph.pruned_states_count
+
+
+
+		
+
 
 
 
