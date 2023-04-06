@@ -38,7 +38,6 @@ class TSPSolver:
 		solution found, and three null values for fields not used for this
 		algorithm</returns>
 	'''
-
 	def defaultRandomTour(self, time_allowance=60.0):
 		results = {}
 		cities = self._scenario.getCities()
@@ -81,12 +80,11 @@ class TSPSolver:
 		solution found, and three null values for fields not used for this
 		algorithm</returns>
 	'''
-
 	def greedy(self,time_allowance=60.0):
 		results = {}
 		cities = self._scenario.getCities()
 		route = []
-# REVIEW: assuming start city is first city in list
+		# NOTE: assuming start city is first city in list
 		start_city = 0
 		
 		start_time = time.time()
@@ -94,7 +92,6 @@ class TSPSolver:
 		while route == []:
 			try:
 				# Start at the first city
-		
 				route.append(cities[start_city])
 				currCityIndex = 0
 
@@ -118,14 +115,17 @@ class TSPSolver:
 					remaining_cities.remove(closest_city)
 					currCityIndex += 1
 			except:
+				# If no valid route is found, try starting from the next city in the list
 				start_city += 1
 				if start_city >= len(cities):
 					raise Exception("No valid route found")
 				route = []
 				continue
 
+		# Create the BSSF from the route we found
 		bssf = TSPSolution(route)
 
+		# Return the results
 		end_time = time.time()
 		results['cost'] = bssf.cost
 		results['time'] = end_time - start_time
@@ -145,13 +145,14 @@ class TSPSolver:
 		not include the initial BSSF), the best solution found, and three more ints:
 		max queue size, total number of states created, and number of pruned states.</returns>
 	'''
-
 	def branchAndBound(self,time_allowance=60.0):
+		# Start the timer immediately
+		start_time = time.time()
+
+
 		cities = self._scenario.getCities()
-		ncities = len(cities)
-
 		results = {}
-
+		# Our initial BSSF is found using the greedy algorithm
 		bssf = self.greedy(time_allowance)['soln']
 		cost = bssf.cost
 		count = 0
@@ -162,18 +163,18 @@ class TSPSolver:
 		# Create a priority queue
 		pq = PriorityQueue()
 
-		# Create the initial StateGraph
+		# Create the initial StateGraph (i.e. the initial adjacency matrix)
 		state_graph = StateGraph(cities, bssf)
 
-		# Add the initial state to the priority queue
+		# Add the initial state to the priority queue (this PQ is sorted by lower bound)
 		pq.put((state_graph.lower_bound, state_graph))
 
-		start_time = time.time()
-
+		# Continuously loop the queue is empty or until the time allowance is up
 		while not pq.empty() and time.time() - start_time <= time_allowance:
-			# Get the next state
+			# Get the next state (the adjacency matrix with the lowest lower bound and deepest depth)
 			state_graph = pq.get()[1]
 
+			# If the state has a lower bound greater than the current best solution, prune it
 			if state_graph.lower_bound >= cost:
 				pruned_states += 1
 				continue
@@ -187,10 +188,10 @@ class TSPSolver:
 					cost = bssf.cost
 					count += 1
 			else:
-				# Expand the state
+				# Expand the state  (i.e. create children adjacency matrices from the current state)
 				children, pruned_states_count = state_graph.get_partial_paths()
 
-				# Add the children to the priority queue
+				# Add the children to the priority queue, incrementing the total number of states for each child
 				for child in children:
 					if DEBUG:
 						child.print_adj_matrix()
@@ -201,15 +202,17 @@ class TSPSolver:
 			if pq.qsize() > max_queue_size:
 				max_queue_size = pq.qsize()
 			pruned_states += pruned_states_count
-			# total_states += 1
+
+		# Stop the timer
 		end_time = time.time()
 
-		# add any remaining states with lowerbound >= cost to pruned states
+		# Add any remaining states with lowerbound >= cost to pruned states
 		while pq.qsize() > 0:
 			state_graph = pq.get()[1]
 			if state_graph.lower_bound >= cost:
 				pruned_states += 1
 
+		# Return the results
 		results['cost'] = bssf.cost
 		results['time'] = end_time - start_time
 		results['count'] = count
@@ -228,6 +231,5 @@ class TSPSolver:
 		best solution found.  You may use the other three field however you like.
 		algorithm</returns>
 	'''
-
 	def fancy(self,time_allowance=60.0):
 		pass

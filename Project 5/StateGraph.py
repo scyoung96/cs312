@@ -8,9 +8,7 @@ class StateGraph:
     def __init__(self, cities, bssf=None):
         self.cities = cities
         self.num_cities = len(cities)
-        self.adj_list = []
         self.adj_matrix = np.zeros((self.num_cities, self.num_cities))
-        self.create_adj_list()
         self.create_adj_matrix()
         self.bssf = bssf
         self.lower_bound = 0
@@ -20,16 +18,8 @@ class StateGraph:
         self.depth = 0
 
     def __lt__(self, other):
-        return self.depth < other.depth
-    
-    def create_adj_list(self):
-        for i in range(self.num_cities):
-            self.adj_list.append([])
-            for j in range(self.num_cities):
-                if i != j:
-                    self.adj_list[i].append(j)
-                else:
-                    self.adj_list[i].append(np.inf)
+        # we do the opposite of what we would normally do because we want the priority queue to prioritize higher depth values
+        return self.depth > other.depth
     
     def create_adj_matrix(self):
         for i in range(self.num_cities):
