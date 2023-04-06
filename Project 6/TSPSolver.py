@@ -9,12 +9,14 @@ else:
 	raise Exception('Unsupported Version of PyQt: {}'.format(PYQT_VER))
 
 from colorize import *
-from StateGraph import *
+from Permuter import *
 
 import time
 import numpy as np
 from TSPClasses import *
 from queue import PriorityQueue
+from random import randint
+from copy import deepcopy
 
 
 DEBUG = False
@@ -90,40 +92,39 @@ class TSPSolver:
 		
 		start_time = time.time()
 		
-		while len(route) < len(cities):
-			try:
-				# Start at the first city
-				route.append(cities[start_city])
-				currCityIndex = 0
+		while route == []:
+			# Start at the first city
+			route.append(cities[start_city])
+			currCityIndex = 0
 
-				# Create a list of the remaining cities
-				remaining_cities = cities.copy()
-				remaining_cities.remove(cities[start_city])
+			# Create a list of the remaining cities
+			remaining_cities = cities.copy()
+			remaining_cities.remove(cities[start_city])
 
-				# Loop through the remaining cities
-				while len(remaining_cities) > 0:
-					# Find the closest city
-					closest_city = None
-					closest_distance = math.inf
-					for city in remaining_cities:
-						distance = route[currCityIndex].costTo(city)
-						if distance < closest_distance:
-							closest_city = city
-							closest_distance = distance
+			# Loop through the remaining cities
+			while len(remaining_cities) > 0:
+				# Find the closest city
+				closest_city = None
+				closest_distance = math.inf
+				for city in remaining_cities:
+					distance = route[currCityIndex].costTo(city)
+					if distance < closest_distance:
+						closest_city = city
+						closest_distance = distance
 
-					# Add the closest city to the route
-					route.append(closest_city)
-					remaining_cities.remove(closest_city)
-					currCityIndex += 1
-				
-				if len(route) == len(cities) and bssf == None:
-					raise Exception("No valid route found")
-			except:
-				# If no valid route is found, try starting from the next city in the list
-				printc(f"No valid route found (start city: {start_city}), trying next city", "red")
+				if closest_distance == math.inf:
+					break
+
+				# Add the closest city to the route
+				route.append(closest_city)
+				remaining_cities.remove(closest_city)
+				currCityIndex += 1
+
+			if route[-1].costTo(route[0]) == math.inf:
+				printc(f"No valid route found (start city: {cities[start_city]._name}, index: {start_city}), trying next city", "red")
 				start_city += 1
 				if start_city >= len(cities):
-					raise Exception("No valid route found")
+					raise Exception("No valid route found starting from any city")
 				route = []
 				continue
 
@@ -236,4 +237,60 @@ class TSPSolver:
 		algorithm</returns>
 	'''
 	def fancy(self,time_allowance=60.0):
-		pass
+		# Start the timer immediately
+		start_time = time.time()
+
+		cities = self._scenario.getCities()
+		results = {}
+		# Our initial BSSF is found using the greedy algorithm
+		greedy_solution = self.greedy(time_allowance)
+		bssf = greedy_solution['soln']
+		cost = bssf.cost
+		count = 0
+		max_queue_size = 0
+		total_states = 1
+		pruned_states = 0
+
+		countdown = len(cities) * 10
+
+		while countdown > 0 and time.time() - start_time <= time_allowance:
+			# Expand the state  (i.e. create children adjacency matrices from the current state)
+			permutation = permute(bssf.route)
+
+			# Check if the state is a better solution than our current solution
+			solution_check = is_better_solution(permutation, bssf)
+			if solution_check[0]:
+				count += 1
+				bssf = solution_check[1]
+				cost = bssf.cost
+				countdown = len(cities)
+			else:
+				countdown -= 1
+
+		# Stop the timer
+		end_time = time.time()
+		
+		# Return the results
+		results['cost'] = cost
+		results['time'] = end_time - start_time
+		results['count'] = count
+		results['soln'] = bssf
+		return results
+			
+
+
+def permute(cities):
+	temp_cities = deepcopy(cities)
+
+	ind1 = random.randint(0, len(cities) - 1)
+	ind2 = random.randint(0, len(cities) - 1)
+
+	temp_cities[ind1], temp_cities[ind2] = temp_cities[ind2], temp_cities[ind1]
+
+	return temp_cities
+
+
+def is_better_solution(permutation, bssf):
+	test_bssf = TSPSolution(permutation)
+	ret_bool = test_bssf.cost < bssf.cost
+	return (ret_bool, test_bssf)
