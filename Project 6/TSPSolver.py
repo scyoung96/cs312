@@ -9,7 +9,7 @@ else:
 	raise Exception('Unsupported Version of PyQt: {}'.format(PYQT_VER))
 
 from colorize import *
-from Permuter import *
+from StateGraph import *
 
 import time
 import numpy as np
@@ -82,65 +82,147 @@ class TSPSolver:
 		solution found, and three null values for fields not used for this
 		algorithm</returns>
 	'''
-	def greedy(self,time_allowance=60.0):
-		results = {}
+	# def greedy(self,time_allowance=60.0):
+	# 	results = {}
+	# 	cities = self._scenario.getCities()
+	# 	route = []
+	# 	# NOTE: assuming start city is first city in list
+	# 	start_city = 0
+	# 	bssf = None
+		
+	# 	start_time = time.time()
+		
+	# 	while route == []:
+	# 		# Start at the first city
+	# 		route.append(cities[start_city])
+	# 		currCityIndex = 0
+
+	# 		# Create a list of the remaining cities
+	# 		remaining_cities = cities.copy()
+	# 		remaining_cities.remove(cities[start_city])
+
+	# 		# Loop through the remaining cities
+	# 		while len(remaining_cities) > 0:
+	# 			# Find the closest city
+	# 			closest_city = None
+	# 			closest_distance = math.inf
+	# 			for city in remaining_cities:
+	# 				distance = route[currCityIndex].costTo(city)
+	# 				if distance < closest_distance:
+	# 					closest_city = city
+	# 					closest_distance = distance
+
+	# 			if closest_distance == math.inf:
+	# 				break
+
+	# 			# Add the closest city to the route
+	# 			route.append(closest_city)
+	# 			remaining_cities.remove(closest_city)
+	# 			currCityIndex += 1
+
+	# 		# Check if valid tour found
+	# 		if route[-1].costTo(route[0]) == math.inf or len(route) != len(cities):
+	# 			printc(f"No valid route found (start city: {cities[start_city]._name}, index: {start_city}), trying next city", "red")
+	# 			start_city += 1
+	# 			if start_city >= len(cities):
+	# 				raise Exception("No valid route found starting from any city")
+	# 			route = []
+	# 			continue
+
+	# 	# Create the BSSF from the route we found
+	# 	bssf = TSPSolution(route)
+
+	# 	# Return the results
+	# 	end_time = time.time()
+	# 	results['cost'] = bssf.cost
+	# 	results['time'] = end_time - start_time
+	# 	results['count'] = 0
+	# 	results['soln'] = bssf
+	# 	results['max'] = None
+	# 	results['total'] = None
+	# 	results['pruned'] = None
+	# 	return results
+
+
+	# GROUP CODE ###########################################################################
+
+	def greedy(self, time_allowance=60.0):
 		cities = self._scenario.getCities()
-		route = []
-		# NOTE: assuming start city is first city in list
-		start_city = 0
-		bssf = None
-		
+
+		# make np array of distances
+		distances = np.zeros((len(cities), len(cities)))
+		for i in range(len(cities)):
+			for j in range(len(cities)):
+				distances[i][j] = cities[i].costTo(cities[j])
+		n = distances.shape[0]
+
+
+		best_cost = np.inf
+		best_path = None
+
+
 		start_time = time.time()
-		
-		while route == []:
-			# Start at the first city
-			route.append(cities[start_city])
-			currCityIndex = 0
+		for start_city in range(n):
+			path = [start_city]
+			total_cost = 0
 
-			# Create a list of the remaining cities
-			remaining_cities = cities.copy()
-			remaining_cities.remove(cities[start_city])
 
-			# Loop through the remaining cities
-			while len(remaining_cities) > 0:
-				# Find the closest city
-				closest_city = None
-				closest_distance = math.inf
-				for city in remaining_cities:
-					distance = route[currCityIndex].costTo(city)
-					if distance < closest_distance:
-						closest_city = city
-						closest_distance = distance
-
-				if closest_distance == math.inf:
+			while len(path) < n:
+				if time.time() - start_time > time_allowance:
 					break
+				current_city = path[-1]
+				next_city = None
+				min_cost = np.inf
 
-				# Add the closest city to the route
-				route.append(closest_city)
-				remaining_cities.remove(closest_city)
-				currCityIndex += 1
 
-			if route[-1].costTo(route[0]) == math.inf:
-				printc(f"No valid route found (start city: {cities[start_city]._name}, index: {start_city}), trying next city", "red")
-				start_city += 1
-				if start_city >= len(cities):
-					raise Exception("No valid route found starting from any city")
-				route = []
-				continue
+				for city in range(n):
+					if city not in path:
+						cost = distances[current_city, city]
+						if cost < min_cost:
+							min_cost = cost
+							next_city = city
 
-		# Create the BSSF from the route we found
-		bssf = TSPSolution(route)
 
-		# Return the results
+				if next_city is None:
+					# if there is no path to any unvisited city from the current city,
+					# start again from a random unvisited city
+					unvisited_cities = set(range(n)) - set(path)
+					start_city = random.choice(list(unvisited_cities))
+					path.append(start_city)
+					continue
+
+
+				path.append(next_city)
+				total_cost += min_cost
+
+
+			if len(path) == n:
+				# a complete path was found
+				total_cost += distances[path[-1], start_city]
+
+
+				if total_cost < best_cost:
+					best_cost = total_cost
+					best_path = path
+
+
 		end_time = time.time()
-		results['cost'] = bssf.cost
-		results['time'] = end_time - start_time
-		results['count'] = 0
-		results['soln'] = bssf
-		results['max'] = None
-		results['total'] = None
-		results['pruned'] = None
+
+
+		if best_path is not None:
+			# convert path to city list
+			city_path = [cities[i] for i in best_path]
+			bssf = TSPSolution(city_path)
+			results = {'cost': int(best_cost), 'time': end_time - start_time, 'count': 1,
+						'soln': bssf, 'max': None, 'total': None, 'pruned': None}
+		else:
+			results = {'cost': np.inf, 'time': end_time - start_time, 'count': 1,
+						'soln': None, 'max': None, 'total': None, 'pruned': None}
+
+
 		return results
+
+	# GROUP CODE ###########################################################################
 
 
 	''' <summary>
@@ -236,61 +318,67 @@ class TSPSolver:
 		best solution found.  You may use the other three field however you like.
 		algorithm</returns>
 	'''
-	def fancy(self,time_allowance=60.0):
-		# Start the timer immediately
+
+	def fancy(self, time_allowance=60.0):
+		# These preliminary pieces of code were copied and pasted from the default algorithm
+		results = {}
+		count = 0
+		bssf = None
 		start_time = time.time()
 
-		cities = self._scenario.getCities()
-		results = {}
-		# Our initial BSSF is found using the greedy algorithm
-		greedy_solution = self.greedy(time_allowance)
-		bssf = greedy_solution['soln']
-		cost = bssf.cost
-		count = 0
-		max_queue_size = 0
-		total_states = 1
-		pruned_states = 0
 
-		countdown = len(cities) * 10
+		# This default algorithm is used to find the initial BSSF
+		while time.time() - start_time < time_allowance:
+			bssf = self.greedy(time_allowance)['soln']
 
-		while countdown > 0 and time.time() - start_time <= time_allowance:
-			# Expand the state  (i.e. create children adjacency matrices from the current state)
-			permutation = permute(bssf.route)
+			if bssf.cost == np.inf:
+				break
 
-			# Check if the state is a better solution than our current solution
-			solution_check = is_better_solution(permutation, bssf)
-			if solution_check[0]:
-				count += 1
-				bssf = solution_check[1]
-				cost = bssf.cost
-				countdown = len(cities)
-			else:
-				countdown -= 1
+			bssf = self.two_opt(bssf.route, bssf.cost, count)
+			break
 
-		# Stop the timer
+
+		# Also taken from the default algorithm, returns the results of the algorithm to the GUI
 		end_time = time.time()
-		
-		# Return the results
-		results['cost'] = cost
+		results['cost'] = bssf.cost
 		results['time'] = end_time - start_time
 		results['count'] = count
 		results['soln'] = bssf
 		return results
-			
 
 
-def permute(cities):
-	temp_cities = deepcopy(cities)
+	def two_opt(self, path, cost, count):
+		n = len(path)
+		improved = True
+		while improved:
+			improved = False
+			for i in range(1, n - 1):
+				for j in range(i + 1, n):
+					#Copies the path and swaps the edges by swapping the cities i and j
+					new_path = deepcopy(path)
+					new_path[i:j] = path[j - 1:i - 1:-1]
+					new_dist = 0
 
-	ind1 = random.randint(0, len(cities) - 1)
-	ind2 = random.randint(0, len(cities) - 1)
+					for k in range(n):
+						new_dist += new_path[k].costTo(new_path[(k + 1) % n])
+					if new_dist < cost:
+						path = new_path
+						cost = new_dist
+						count += 1
+						improved = True
 
-	temp_cities[ind1], temp_cities[ind2] = temp_cities[ind2], temp_cities[ind1]
+		path = TSPSolution(path)
+		return path
 
-	return temp_cities
 
-
-def is_better_solution(permutation, bssf):
-	test_bssf = TSPSolution(permutation)
-	ret_bool = test_bssf.cost < bssf.cost
-	return (ret_bool, test_bssf)
+	#Creates the initial matrix using the information from the cities array
+	def matrixCreator(self, cities):
+		nCities = len(cities)
+		toReturn = [[0 for i in range(nCities)] for j in range(nCities)]
+		for i in range(nCities):
+			for j in range(nCities):
+				if (i != j):
+					toReturn[i][j] = cities[i].costTo(cities[j])
+				else:
+					toReturn[i][j] = math.inf
+		return toReturn
